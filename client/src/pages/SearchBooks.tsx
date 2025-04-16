@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useMutation } from '@apollo/client'; // Import useMutation
 import type { FormEvent } from 'react';
 import {
   Container,
@@ -10,7 +11,7 @@ import {
 } from 'react-bootstrap';
 
 import Auth from '../utils/auth';
-import { saveBook, searchGoogleBooks } from '../utils/API';
+import { SAVE_BOOK } from '../utils/mutation'; // Import SAVE_BOOK mutation
 import { saveBookIds, getSavedBookIds } from '../utils/localStorage';
 import type { Book } from '../models/Book';
 import type { GoogleAPIBook } from '../models/GoogleAPIBook';
@@ -25,10 +26,12 @@ const SearchBooks = () => {
   const [savedBookIds, setSavedBookIds] = useState(getSavedBookIds());
 
   // set up useEffect hook to save `savedBookIds` list to localStorage on component unmount
-  // learn more here: https://reactjs.org/docs/hooks-effect.html#effects-with-cleanup
   useEffect(() => {
     return () => saveBookIds(savedBookIds);
   });
+
+  // Set up the SAVE_BOOK mutation
+  const [saveBookMutation] = useMutation(SAVE_BOOK);
 
   // create method to search for books and set state on form submit
   const handleFormSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -39,7 +42,13 @@ const SearchBooks = () => {
     }
 
     try {
-      const response = await searchGoogleBooks(searchInput);
+      // Define the searchGoogleBooks function
+      const searchGoogleBooks = async (query: string) => {
+        const API_URL = `https://www.googleapis.com/books/v1/volumes?q=${query}`;
+        return fetch(API_URL);
+      };
+      
+            const response = await searchGoogleBooks(searchInput);
 
       if (!response.ok) {
         throw new Error('something went wrong!');
@@ -75,9 +84,12 @@ const SearchBooks = () => {
     }
 
     try {
-      const response = await saveBook(bookToSave, token);
+      // Use the SAVE_BOOK mutation
+      const { data } = await saveBookMutation({
+        variables: { bookData: bookToSave },
+      });
 
-      if (!response.ok) {
+      if (!data) {
         throw new Error('something went wrong!');
       }
 
